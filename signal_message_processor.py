@@ -9,6 +9,7 @@ import time
 import mimetypes
 import logging
 import argparse
+import re
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -80,7 +81,6 @@ def main():
     conn.commit()
 
     logger.info("Starting signal-cli subprocess")
-    # Start signal-cli subprocess
     signal_cli_process = subprocess.Popen(
         ['signal-cli', '-a', phone_number, 'jsonRpc'],
         stdin=subprocess.PIPE,
@@ -106,15 +106,16 @@ def main():
                 logger.error(f"Failed to parse JSON: {line}")
                 continue
 
-            if logger.isEnabledFor(logging.DEBUG):
-                logger.debug(f"Received message: {json.dumps(message)}")
-
             if message.get('method') == 'receive':
                 # Process the incoming message
+                if logger.isEnabledFor(logging.DEBUG):
+                    logger.debug(f"Received message: {json.dumps(message)}")
                 process_incoming_message(message, signal_cli_process.stdin, pending_attachments, conn, cursor, attachment_dir)
             elif 'id' in message:
                 # This is a response to an attachment request
                 request_id = message.get('id')
+                if logger.isEnabledFor(logging.DEBUG):
+                    logger.debug(f"Received attachment with ID '{message.get('id')}'")
                 process_attachment_response(message, request_id, pending_attachments, conn, cursor, attachment_dir)
             else:
                 logger.warning(f"Unknown message type: {message}")
@@ -188,21 +189,29 @@ def process_incoming_message(message, stdin, pending_attachments, conn, cursor, 
                 "id": request_id
             }
 
-            if logger.isEnabledFor(logging.DEBUG):
-                logger.debug(f"Sending RPC request: {json.dumps(request)}")
-
-            # Write request to stdin
-            stdin.write(json.dumps(request) + '\n')
-            stdin.flush()
-
-            # Add to pending attachments
             pending_attachments[request_id] = {
                 'message_id': message_id,
                 'attachment_id': attachment_id
             }
 
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug(f"Sending RPC request: {json.dumps(request)}")
+
+            stdin.write(json.dumps(request) + '\n')
+            stdin.flush()
+
+
     except Exception as e:
         logger.exception(f"Error processing message: {e}")
+
+
+def sanitize_filename(filename):
+    filename = os.path.basename(filename)
+    filename = re.sub(r'[^\w\-_\. ]', '', filename)
+    filename = filename.strip('. ')
+    if not filename:
+        filename = 'unnamed_file'
+    return filename
 
 def process_attachment_response(message, request_id, pending_attachments, conn, cursor, attachment_dir):
     try:
@@ -228,6 +237,8 @@ def process_attachment_response(message, request_id, pending_attachments, conn, 
                 else:
                     file_extension = get_extension_from_content_type(content_type)
                     file_name = f"{attachment_id}{file_extension}"
+
+                file_name = sanitize_filename(f"{message_id}_{file_name}")
 
                 file_path = os.path.join(attachment_dir, file_name)
                 with open(file_path, 'wb') as f:
