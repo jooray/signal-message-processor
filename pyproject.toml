@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "signal-message-processor"
+version = "0.1.0"
+description = "A Signal message processor for handling group messages and attachments."
+authors = ["Juraj Bednar <juraj@bednar.io>"]
+license = "MIT"
+readme = "README.md"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.9"
+sqlite-utils = "^3.33.0"  # SQLite helper library for potential utilities
+
+[tool.poetry.scripts]
+signal-message-processor = "signal_message_processor:main"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

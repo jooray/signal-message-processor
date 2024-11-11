@@ -1,0 +1,5 @@
+{
+    "phoneNumber": "+123456789",
+    "database": "messages.db",
+    "attachmentDirectory": "attachments"
+}
