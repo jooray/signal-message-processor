@@ -35,4 +35,6 @@ fi
 echo "Setting memory limit to $MEMORY_LIMIT..."
 echo "$MEMORY_LIMIT" | sudo tee "/sys/fs/cgroup/memory/$CGROUP_NAME/memory.limit_in_bytes" > /dev/null
 
+sudo bash -c "chown $USER /sys/fs/cgroup/cpu/signal_cli_cgroup/tasks /sys/fs/cgroup/memory/signal_cli_cgroup/tasks"
+
 echo "Cgroup '$CGROUP_NAME' has been initialized with CPU and memory limits."
